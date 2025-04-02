@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Игра "Match Colors"</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 20px;
+            background-color: #f0f0f0;
+        }
+        .game-container {
+            width: 100%;
+            max-width: 600px;
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .color-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .color-button {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .color-button:hover {
+            transform: scale(1.1);
+        }
+        .color-button.disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .sequence-display {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            min-height: 60px;
+        }
+        .color-slot {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            margin: 5px;
+            border: 2px dashed #ccc;
+            position: relative;
+        }
+        .color-circle {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        .color-circle.locked {
+            box-shadow: 0 0 0 3px gold;
+        }
+        .info-panel {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 10px;
+            background-color: #f8f8f8;
+            border-radius: 5px;
+        }
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            background-color: #4CAF50;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        .attempts {
+            font-weight: bold;
+            color: #e74c3c;
+        }
+        .hidden {
+            display: none;
+        }
+        .rules {
+            margin-top: 20px;
+            text-align: left;
+            padding: 10px;
+            background-color: #f8f8f8;
+            border-radius: 5px;
+        }
+        .history {
+            margin-top: 20px;
+            text-align: left;
+            max-height: 200px;
+            overflow-y: auto;
+            padding: 10px;
+            background-color: #f8f8f8;
+            border-radius: 5px;
+            width: 100%;
+        }
+        .history-item {
+            margin-bottom: 10px;
+            padding: 5px;
+            border-bottom: 1px solid #ddd;
+        }
+        .match-indicator {
+            margin-left: 10px;
+            font-weight: bold;
+        }
+        .correct {
+            color: #2ecc71;
+        }
+        .incorrect {
+            color: #e74c3c;
+        }
+        .partially {
+            color: #f39c12;
+        }
+        .available-colors {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        @media (max-width: 600px) {
+            .color-button {
+                width: 50px;
+                height: 50px;
+            }
+            .color-slot, .color-circle {
+                width: 40px;
+                height: 40px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="header">
+            <h1>Match Colors</h1>
+        </div>
+        
+        <div class="info-panel">
+            <p>Уровень: <span id="level">1</span></p>
+            <p>Осталось попыток: <span id="attempts" class="attempts">3</span></p>
+            <p id="message"></p>
+        </div>
+        
+        <p class="available-colors">Доступные цвета: <span id="colorCount">2</span></p>
+        
+        <div class="sequence-display" id="sequenceDisplay"></div>
+        
+        <div class="color-buttons" id="colorButtons">
+            <button class="color-button" style="background-color: #3498db;" data-color="blue"></button>
+            <button class="color-button" style="background-color: #e74c3c;" data-color="red"></button>
+            <button class="color-button hidden" style="background-color: #2ecc71;" data-color="green"></button>
+            <button class="color-button hidden" style="background-color: #f1c40f;" data-color="yellow"></button>
+            <button class="color-button hidden" style="background-color: #9b59b6;" data-color="purple"></button>
+            <button class="color-button hidden" style="background-color: #e67e22;" data-color="orange"></button>
+            <button class="color-button hidden" style="background-color: #1abc9c;" data-color="teal"></button>
+            <button class="color-button hidden" style="background-color: #95a5a6;" data-color="grey"></button>
+            <button class="color-button hidden" style="background-color: #34495e;" data-color="navy"></button>
+            <button class="color-button hidden" style="background-color: #d35400;" data-color="brown"></button>
+            <button class="color-button hidden" style="background-color: #8e44ad;" data-color="violet"></button>
+            <button class="color-button hidden" style="background-color: #7f8c8d;" data-color="silver"></button>
+            <button class="color-button hidden" style="background-color: #c0392b;" data-color="crimson"></button>
+            <button class="color-button hidden" style="background-color: #16a085;" data-color="emerald"></button>
+            <button class="color-button hidden" style="background-color: #2980b9;" data-color="cobalt"></button>
+            <button class="color-button hidden" style="background-color: #f39c12;" data-color="amber"></button>
+            <button class="color-button hidden" style="background-color: #27ae60;" data-color="jade"></button>
+            <button class="color-button hidden" style="background-color: #2c3e50;" data-color="midnight"></button>
+            <button class="color-button hidden" style="background-color: #FA8072;" data-color="salmon"></button>
+            <button class="color-button hidden" style="background-color: #FF1493;" data-color="pink"></button>
+        </div>
+        
+        <div class="controls">
+            <button id="submit">Проверить</button>
+            <button id="clear">Очистить</button>
+            <button id="restart">Начать заново</button>
+            <button id="showRules">Правила</button>
+        </div>
+        
+        <div class="rules hidden" id="rulesPanel">
+            <h3>Правила игры:</h3>
+            <p>1. На каждом уровне нужно угадать правильную последовательность цветов.</p>
+            <p>2. С каждым уровнем длина последовательности увеличивается на один цвет.</p>
+            <p>3. Каждый цвет можно использовать только один раз.</p>
+            <p>4. Правильно угаданные цвета (и их позиции) фиксируются.</p>
+            <p>5. У вас есть несколько попыток на каждом уровне.</p>
+            <p>6. Если вы не угадаете последовательность за отведенное количество попыток, игра начнется заново.</p>
+            <p>7. Чтобы выиграть, нужно пройти все 20 уровней.</p>
+        </div>
+        
+        <div class="history hidden" id="historyPanel">
+            <h3>История попыток:</h3>
+            <div id="historyContent"></div>
+        </div>
+    </div>
+
+    <script>
+        const colors = [
+            "blue", "red", "green", "yellow", "purple", "orange", "teal", "grey", "navy", "brown",
+            "violet", "silver", "crimson", "emerald", "cobalt", "amber", "jade", "midnight", "salmon", "pink"
+        ];
+        const colorHex = {
+            "blue": "#3498db", "red": "#e74c3c", "green": "#2ecc71", "yellow": "#f1c40f",
+            "purple": "#9b59b6", "orange": "#e67e22", "teal": "#1abc9c", "grey": "#95a5a6",
+            "navy": "#34495e", "brown": "#d35400", "violet": "#8e44ad", "silver": "#7f8c8d",
+            "crimson": "#c0392b", "emerald": "#16a085", "cobalt": "#2980b9", "amber": "#f39c12",
+            "jade": "#27ae60", "midnight": "#2c3e50", "salmon": "#FA8072", "pink": "#FF1493"
+        };
+        const colorNames = {
+            "blue": "Синий", "red": "Красный", "green": "Зеленый", "yellow": "Желтый",
+            "purple": "Фиолетовый", "orange": "Оранжевый", "teal": "Бирюзовый", "grey": "Серый",
+            "navy": "Темно-синий", "brown": "Коричневый", "violet": "Сиреневый", "silver": "Серебристый",
+            "crimson": "Малиновый", "emerald": "Изумрудный", "cobalt": "Кобальтовый", "amber": "Янтарный",
+            "jade": "Нефритовый", "midnight": "Полночный", "salmon": "Лососевый", "pink": "Розовый"
+        };
+        
+        let currentLevel = 1;
+        let maxLevel = 20;
+        let maxAttempts = 3;
+        let remainingAttempts = maxAttempts;
+        let targetSequence = [];
+        let userSequence = [];
+        let lockedPositions = [];
+        let gameActive = true;
+        let usedColors = new Set();
+        
+        const levelElement = document.getElementById("level");
+        const attemptsElement = document.getElementById("attempts");
+        const messageElement = document.getElementById("message");
+        const sequenceDisplay = document.getElementById("sequenceDisplay");
+        const colorButtons = document.getElementById("colorButtons");
+        const submitButton = document.getElementById("submit");
+        const clearButton = document.getElementById("clear");
+        const restartButton = document.getElementById("restart");
+        const showRulesButton = document.getElementById("showRules");
+        const rulesPanel = document.getElementById("rulesPanel");
+        const historyPanel = document.getElementById("historyPanel");
+        const historyContent = document.getElementById("historyContent");
+        const colorCountElement = document.getElementById("colorCount");
+        
+        // Инициализация игры
+        function initGame() {
+            currentLevel = 1;
+            remainingAttempts = maxAttempts;
+            gameActive = true;
+            userSequence = [];
+            lockedPositions = [];
+            usedColors = new Set();
+            updateUI();
+            generateTargetSequence();
+            updateAvailableColors();
+            createSequenceSlots();
+            showHistoryPanel(false);
+            historyContent.innerHTML = "";
+            messageElement.textContent = `Угадайте последовательность из ${currentLevel + 1} цветов!`;
+        }
+        
+        // Генерация случайной последовательности цветов
+        function generateTargetSequence() {
+            targetSequence = [];
+            const availableColors = colors.slice(0, currentLevel + 1);
+            const shuffled = [...availableColors].sort(() => 0.5 - Math.random());
+            targetSequence = shuffled.slice(0, currentLevel + 1);
+            console.log("Target sequence:", targetSequence); // Для отладки
+        }
+        
+        // Обновление доступных цветов для текущего уровня
+        function updateAvailableColors() {
+            const availableColorCount = Math.min(currentLevel + 1, colors.length);
+            colorCountElement.textContent = availableColorCount;
+            
+            // Показываем только нужное количество цветов
+            document.querySelectorAll(".color-button").forEach((button, index) => {
+                if (index < availableColorCount) {
+                    button.classList.remove("hidden");
+                } else {
+                    button.classList.add("hidden");
+                }
+                
+                // Сбрасываем состояние "disabled" для всех кнопок
+                button.classList.remove("disabled");
+            });
+        }
+        
+        // Создание слотов для последовательности
+        function createSequenceSlots() {
+            sequenceDisplay.innerHTML = "";
+            for (let i = 0; i < currentLevel + 1; i++) {
+                const slot = document.createElement("div");
+                slot.className = "color-slot";
+                slot.dataset.index = i;
+                
+                // Если позиция зафиксирована, показываем цвет
+                if (lockedPositions.includes(i)) {
+                    const lockedColor = targetSequence[i];
+                    const circle = document.createElement("div");
+                    circle.className = "color-circle locked";
+                    circle.style.backgroundColor = colorHex[lockedColor];
+                    slot.appendChild(circle);
+                    disableColorButton(lockedColor);
+                }
+                
+                sequenceDisplay.appendChild(slot);
+            }
+        }
+        
+        // Обработка нажатия на кнопку цвета
+        document.querySelectorAll(".color-button").forEach(button => {
+            button.addEventListener("click", () => {
+                if (!gameActive || button.classList.contains("disabled")) return;
+                
+                const color = button.getAttribute("data-color");
+                
+                // Если цвет уже использован, игнорируем
+                if (usedColors.has(color)) return;
+                
+                // Определяем следующую свободную позицию
+                let nextPosition = -1;
+                for (let i = 0; i < currentLevel + 1; i++) {
+                    if (!lockedPositions.includes(i) && !userSequence[i]) {
+                        nextPosition = i;
+                        break;
+                    }
+                }
+                
+                if (nextPosition !== -1) {
+                    userSequence[nextPosition] = color;
+                    usedColors.add(color);
+                    button.classList.add("disabled");
+                    updateSequenceDisplay();
+                }
+            });
+        });
+        
+        // Обновление отображения выбранной последовательности
+        function updateSequenceDisplay() {
+            // Очищаем все нефиксированные слоты
+            document.querySelectorAll(".color-slot").forEach((slot, index) => {
+                if (!lockedPositions.includes(index)) {
+                    slot.innerHTML = "";
+                }
+            });
+            
+            // Заполняем слоты выбранными цветами
+            userSequence.forEach((color, index) => {
+                if (color && !lockedPositions.includes(index)) {
+                    const slot = document.querySelector(`.color-slot[data-index="${index}"]`);
+                    if (slot) {
+                        const circle = document.createElement("div");
+                        circle.className = "color-circle";
+                        circle.style.backgroundColor = colorHex[color];
+                        slot.appendChild(circle);
+                    }
+                }
+            });
+        }
+        
+        // Отключение кнопки выбранного цвета
+        function disableColorButton(color) {
+            const button = document.querySelector(`.color-button[data-color="${color}"]`);
+            if (button) {
+                button.classList.add("disabled");
+                usedColors.add(color);
+            }
+        }
+        
+        // Сравнение последовательностей и обновление зафиксированных позиций
+        function compareSequences() {
+            if (userSequence.length !== targetSequence.length) {
+                return false;
+            }
+            
+            let allCorrect = true;
+            let newLockedPositions = [...lockedPositions];
+            
+            // Проверяем точные совпадения
+            for (let i = 0; i < targetSequence.length; i++) {
+                if (!lockedPositions.includes(i)) {
+                    if (userSequence[i] === targetSequence[i]) {
+                        newLockedPositions.push(i);
+                    } else {
+                        allCorrect = false;
+                    }
+                }
+            }
+            
+            // Фиксируем новые угаданные позиции
+            if (newLockedPositions.length > lockedPositions.length) {
+                lockedPositions = newLockedPositions;
+            }
+            
+            // Запись попытки в историю
+            addToHistory();
+            
+            return allCorrect;
+        }
+        
+        // Добавление текущей попытки в историю
+        function addToHistory() {
+            const historyItem = document.createElement("div");
+            historyItem.className = "history-item";
+            
+            let text = `Попытка ${maxAttempts - remainingAttempts + 1}: `;
+            for (let i = 0; i < targetSequence.length; i++) {
+                if (lockedPositions.includes(i)) {
+                    text += `[${colorNames[targetSequence[i]]}] `;
+                } else if (userSequence[i]) {
+                    text += colorNames[userSequence[i]] + " ";
+                } else {
+                    text += "_ ";
+                }
+            }
+            
+            const exactMatches = getExactMatches();
+            
+            let matchIndicator = document.createElement("span");
+            matchIndicator.className = "match-indicator";
+            
+            if (exactMatches === targetSequence.length) {
+                matchIndicator.textContent = "✓ Верно!";
+                matchIndicator.classList.add("correct");
+            } else {
+                matchIndicator.textContent = `✓ Угадано позиций: ${exactMatches}/${targetSequence.length}`;
+                matchIndicator.classList.add(exactMatches > 0 ? "partially" : "incorrect");
+            }
+            
+            historyItem.textContent = text;
+            historyItem.appendChild(matchIndicator);
+            historyContent.appendChild(historyItem);
+            
+            showHistoryPanel(true);
+        }
+        
+        // Получение количества точных совпадений
+        function getExactMatches() {
+            let matches = lockedPositions.length;
+            for (let i = 0; i < targetSequence.length; i++) {
+                if (!lockedPositions.includes(i) && userSequence[i] === targetSequence[i]) {
+                    matches++;
+                }
+            }
+            return matches;
+        }
+        
+        // Сброс выбранных цветов (кроме зафиксированных)
+        function resetUserSelection() {
+            // Сбрасываем выбранные цвета
+            userSequence = Array(targetSequence.length).fill(null);
+            
+            // Восстанавливаем зафиксированные цвета
+            lockedPositions.forEach(pos => {
+                userSequence[pos] = targetSequence[pos];
+            });
+            
+            // Сбрасываем использованные цвета
+            usedColors = new Set();
+            lockedPositions.forEach(pos => {
+                usedColors.add(targetSequence[pos]);
+            });
+            
+            // Обновляем состояние кнопок цветов
+            document.querySelectorAll(".color-button").forEach(button => {
+                const color = button.getAttribute("data-color");
+                if (usedColors.has(color)) {
+                    button.classList.add("disabled");
+                } else {
+                    button.classList.remove("disabled");
+                }
+            });
+            
+            // Обновляем отображение
+            updateSequenceDisplay();
+        }
+        
+        // Обработка нажатия на кнопку "Проверить"
+        submitButton.addEventListener("click", () => {
+            if (!gameActive) return;
+            
+            // Проверяем, что все слоты заполнены
+            let allFilled = true;
+            for (let i = 0; i < currentLevel + 1; i++) {
+                if (!lockedPositions.includes(i) && !userSequence[i]) {
+                    allFilled = false;
+                    break;
+                }
+            }
+            
+            if (!allFilled) {
+                messageElement.textContent = "Заполните все пустые слоты!";
+                return;
+            }
+            
+            if (compareSequences()) {
+                // Уровень пройден
+                messageElement.textContent = "Правильно! Переход на следующий уровень.";
+                setTimeout(() => {
+                    if (currentLevel === maxLevel) {
+                        messageElement.textContent = "Поздравляем! Вы прошли все уровни!";
+                        gameActive = false;
+                    } else {
+                        currentLevel++;
+                        remainingAttempts = maxAttempts;
+                        userSequence = [];
+                        lockedPositions = [];
+                        usedColors = new Set();
+                        updateUI();
+                        generateTargetSequence();
+                        updateAvailableColors();
+                        createSequenceSlots();
+                        messageElement.textContent = `Угадайте последовательность из ${currentLevel + 1} цветов!`;
+                    }
+                }, 1500);
+            } else {
+                // Неверная последовательность
+                remainingAttempts--;
+                updateUI();
+                
+                if (remainingAttempts <= 0) {
+                    messageElement.textContent = "Игра окончена. Нажмите 'Начать заново'.";
+                    gameActive = false;
+                } else {
+                    const exactMatches = getExactMatches();
+                    messageElement.textContent = `Неверно! Угадано позиций: ${exactMatches}/${targetSequence.length}. Осталось попыток: ${remainingAttempts}.`;
+                    
+                    // Сбрасываем выбор пользователя, но сохраняем зафиксированные позиции
+                    resetUserSelection();
+                    
+                    // Обновляем слоты для выбора
+                    createSequenceSlots();
+                }
+            }
+        });
+        
+        // Обработка нажатия на кнопку "Очистить"
+        clearButton.addEventListener("click", () => {
+            if (!gameActive) return;
+            resetUserSelection();
+        });
+        
+        // Обработка нажатия на кнопку "Начать заново"
+        restartButton.addEventListener("click", initGame);
+        
+        // Обработка нажатия на кнопку "Правила"
+        showRulesButton.addEventListener("click", () => {
+            rulesPanel.classList.toggle("hidden");
+        });
+        
+        // Обновление интерфейса
+        function updateUI() {
+            levelElement.textContent = currentLevel;
+            attemptsElement.textContent = remainingAttempts;
+        }
+        
+        // Показать/скрыть панель истории
+        function showHistoryPanel(show) {
+            if (show) {
+                historyPanel.classList.remove("hidden");
+            } else {
+                historyPanel.classList.add("hidden");
+            }
+        }
+        
+        // Запуск игры
+        initGame();
+    </script>
+</body>
+</html>
